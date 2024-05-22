@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.linalg import lu, lu_solve ,lu_factor
 import csv
 import math
 
@@ -66,41 +67,13 @@ def spline(x,x_array,result):
     for i in range(len(x)):
         if x[i]>x_array[z+1]:
             z+=1
-        y = result[z*4,0]+result[z*4+1,0]*x[i]+result[z*4+2,0]*x[i]**2+result[z*4+3,0]*x[i]**3
+        a = result[z * 4, 0]
+        b = result[z*4+1,0]*(x[i]-x_array[z])
+        c= result[z*4+2,0]*(x[i]-x_array[z])**2
+        d = result[z * 4 + 3, 0] * (x[i]-x_array[z])** 3
+        y = a+b+c+d
         function.append(y)
     return function
-
-
-
-x_values, y_values = loadData()
-size = len(x_values)
-print(size)
-
-n = 7  # liczba wezłow , stopień  wielomianu = n-1
-distribution = math.floor(size / (n - 1))
-
-array_x, array_y = linearDistribution(n, distribution)
-
-# node_x,node_y = rounding()
-# interpolationLagrangeR = interpolatedFunc(x_values,node_x,node_y,n)
-
-interpolationLagrange = interpolatedFunc(x_values, array_x, array_y, n)
-
-plt.figure(figsize=(15, 6))  # Ustawienie rozmiaru wykresu
-plt.plot(x_values, y_values, color='b', label='original')
-plt.plot(array_x, array_y, 'o', label='Nodes', color='r')  # 'o' oznacza marker punktu
-plt.plot(x_values, interpolationLagrange, color='g', label='interpolation')
-# plt.plot(x_values, interpolationLagrangeR, color='r', label='interpolationR')
-for i in range(len(array_x)):
-    plt.annotate(f'({array_x[i]:.2f}, {array_y[i]:.2f})', (array_x[i], array_y[i]), textcoords="offset points",
-                 xytext=(0, 10), ha='center')
-# plt.xlim(0, 4500)
-# plt.xticks(range(0,25000, 4000))
-plt.title('Interpolacja dla n węzłów')
-plt.xlabel('Dystans [m]')
-plt.ylabel('Wysokość [m]')
-plt.legend()
-plt.show()
 
 
 def createMatrix(x,y,n):
@@ -109,7 +82,7 @@ def createMatrix(x,y,n):
     columns = rows
     matrix = np.zeros((rows, columns))
     vector = np.zeros((rows, 1))
-    for i in range(n-1):
+    for i in range(n):
         h = x[i + 1] - x[i]  # h=xi+1-xi
         # a0 = f (x0)
         matrix[2 * i, 4 * i] = 1
@@ -141,21 +114,49 @@ def createMatrix(x,y,n):
 
     return [matrix,vector]
 
+def plot(interpolation,str):
+    plt.figure(figsize=(15, 6))  # Ustawienie rozmiaru wykresu
+    plt.plot(x_values, y_values, color='b', label='original')
+    plt.plot(array_x, array_y, 'o', label='Nodes', color='r')  # 'o' oznacza marker punktu
+    plt.plot(x_values, interpolation, color='g', label='interpolation')
+    for i in range(len(array_x)):
+        plt.annotate(f'({round(array_x[i])}, {round(array_y[i])})',
+                     (array_x[i], array_y[i]), textcoords="offset points",
+                     xytext=(0, 10), ha='center')
+    # plt.xlim(0, 4500)
+    # plt.xticks(range(0,25000, 4000))
+    plt.title(str)
+    plt.xlabel('Dystans [m]')
+    plt.ylabel('Wysokość [m]')
+    plt.legend()
+    plt.show()
 
-#A,b = createMatrix(array_x, array_y,n)
-A,b = createMatrix([1,3,5], [6,-2,4],3)
-result = np.linalg.solve(A, b)
+x_values, y_values = loadData()
+size = len(x_values)
+print(size)
+n = 10  # liczba wezłow , stopień  wielomianu = n-1,ilość przedziałów = n-1
+distribution = math.floor(size / (n - 1))
+array_x, array_y = linearDistribution(n, distribution)
+interpolationLagrange = interpolatedFunc(x_values, array_x, array_y, n)
+
+plot(interpolationLagrange,'Interpolacja Lagrange\'a dla n węzłów')
+
+A,b = createMatrix(array_x, array_y,n-1)
+#A,b = createMatrix([1,2,3,4,5], [6,2,-2,1,4],4)
+lu_and_piv = lu_factor(A)
+# Następnie rozwiązujemy układ równań
+result = lu_solve(lu_and_piv, b)
 print(result)
-
-
 splineInterpolation = spline(x_values,array_x,result)
+#
+# points = np.linspace(1, 5, 100)
+# splineInterpolation = spline(points,[1,2,3,4,5],result)
+# plt.plot(points, splineInterpolation)
+# plt.xlabel('x')
+# plt.ylabel('y')
+# plt.show()
 
-
-
-
-
-
-
+plot(splineInterpolation,'Interpolacja dla n węzłów funkcjami sklejanymi (splajny)')
 
 
 
