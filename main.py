@@ -14,6 +14,38 @@ def linearDistribution(n, distribution):
     array_x.append(x_values[-1])
     array_y.append(y_values[-1])
     return [array_x, array_y]
+def chebyshevDistribution(n):
+    array_x = []
+    array_y = []
+    a = x_values[0]
+    b = x_values[-1]
+    v1 = (a + b) / 2
+    v2 = (b - a) / 2
+    i = 0
+    node = chebyshevNode(i, n, v1, v2)
+
+    for j in range(len(x_values)-1,-1,-1):
+
+        if node>=x_values[j]:
+            array_x.append(x_values[j])
+            array_y.append(y_values[j])
+            i+=1
+            if i ==n:
+                break;
+            node = chebyshevNode(i, n, v1, v2)
+
+    array_x[0] = x_values[-1]
+    array_x[-1] = x_values[0]
+    array_y[0] = y_values[-1]
+    array_y[-1] = y_values[0]
+    return [array_x, array_y]
+
+
+def chebyshevNode(i, n, v1, v2):
+    counter = 2 * i + 1
+    arg = counter / (2 * n)
+    arg *= math.pi
+    return v1 + v2 * math.cos(arg)
 
 
 def baseLagrange(x_array, index, x):
@@ -117,15 +149,12 @@ def createMatrix(x,y,n):
 def plot(interpolation,str):
     plt.figure(figsize=(15, 6))  # Ustawienie rozmiaru wykresu
     plt.plot(x_values, y_values, color='b', label='original')
-    plt.plot(array_x, array_y, 'o', label='Nodes', color='r')  # 'o' oznacza marker punktu
+    plt.plot(array_x, array_y, 'o', label='Chebyshev Nodes', color='r')  # 'o' oznacza marker punktu
     plt.plot(x_values, interpolation, color='g', label='interpolation')
-    for i in range(len(array_x)):
-        plt.annotate(f'({round(array_x[i])}, {round(array_y[i])})',
-                     (array_x[i], array_y[i]), textcoords="offset points",
-                     xytext=(0, 10), ha='center')
-    # plt.xlim(0, 4500)
-    # plt.xticks(range(0,25000, 4000))
-    plt.title(str)
+    # for i in range(len(array_x)):
+    #     plt.annotate(f'({round(array_x[i])}, {round(array_y[i])})',
+    #                  (array_x[i], array_y[i]), textcoords="offset points",
+    #                  xytext=(0, 10), ha='center')
     plt.xlabel('Dystans [m]')
     plt.ylabel('Wysokość [m]')
     plt.legend()
@@ -134,29 +163,41 @@ def plot(interpolation,str):
 x_values, y_values = loadData()
 size = len(x_values)
 print(size)
-n = 10  # liczba wezłow , stopień  wielomianu = n-1,ilość przedziałów = n-1
+n = 30# liczba wezłow , stopień  wielomianu = n-1,ilość przedziałów = n-1
 distribution = math.floor(size / (n - 1))
-array_x, array_y = linearDistribution(n, distribution)
+array_xlinear, array_ylinear = linearDistribution(n, distribution)
+array_x, array_y = chebyshevDistribution(n)
+array_x.reverse()
+array_y.reverse()
+#interpolacja Lagrange 'a rozkład chebyszewa
 interpolationLagrange = interpolatedFunc(x_values, array_x, array_y, n)
-
 plot(interpolationLagrange,'Interpolacja Lagrange\'a dla n węzłów')
 
-A,b = createMatrix(array_x, array_y,n-1)
-#A,b = createMatrix([1,2,3,4,5], [6,2,-2,1,4],4)
+A,b = createMatrix(array_xlinear, array_ylinear,n-1)
 lu_and_piv = lu_factor(A)
-# Następnie rozwiązujemy układ równań
 result = lu_solve(lu_and_piv, b)
-print(result)
-splineInterpolation = spline(x_values,array_x,result)
-#
-# points = np.linspace(1, 5, 100)
-# splineInterpolation = spline(points,[1,2,3,4,5],result)
-# plt.plot(points, splineInterpolation)
-# plt.xlabel('x')
-# plt.ylabel('y')
-# plt.show()
+#splajny rozkład liniowy
+splineInterpolation = spline(x_values,array_xlinear,result)
 
-plot(splineInterpolation,'Interpolacja dla n węzłów funkcjami sklejanymi (splajny)')
+
+A,b = createMatrix(array_x, array_y,n-1)
+lu_and_piv = lu_factor(A)
+resultCh = lu_solve(lu_and_piv, b)
+#splajny rozkład chebyszewa
+splineInterpolationChebyshev = spline(x_values,array_x,resultCh)
+
+#wykres splajny rozkład liniowy vs lagrange'a rozkład chebyszewa
+plt.figure(figsize=(15, 6))  # Ustawienie rozmiaru wykresu
+plt.plot(x_values, y_values, color='b', label='original')
+plt.plot(array_xlinear, array_ylinear, 'o', label='Nodes', color='r')  # 'o' oznacza marker punktu
+plt.plot(array_x, array_y, 'o', label='Chebyshev Nodes', color='g')  # 'o' oznacza marker punktu
+plt.plot(x_values, splineInterpolation, color='r', label='spline')
+plt.plot(x_values, interpolationLagrange, color='g', label='Lagrange\'a')
+plt.xlabel('Dystans [m]')
+plt.ylabel('Wysokość [m]')
+plt.legend()
+plt.show()
+plot(splineInterpolationChebyshev,'Interpolacja dla n węzłów funkcjami sklejanymi (splajny)')
 
 
 
